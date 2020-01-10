@@ -1,0 +1,4 @@
+(executable
+  (name      main)
+  (modules main blackscholes frictionless)
+  (libraries owl owl-plplot))
