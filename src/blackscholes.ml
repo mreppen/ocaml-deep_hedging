@@ -1,4 +1,6 @@
-module Nd = Owl.Dense.Ndarray.D
+open Owl_type_aliases
+module Nd = Ndarray
+
 let stdnorm_cdf = Owl.Stats.gaussian_cdf ~mu:0. ~sigma:1.
 
 let d1 s strike t_to_T sigma =

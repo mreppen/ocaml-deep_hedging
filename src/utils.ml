@@ -1,7 +1,8 @@
-module Graph = Owl.Neural.D.Graph
-module Nd = Owl.Dense.Ndarray.D
+open Parameters
+open Owl_type_aliases
+module Graph = Neural.Graph
+module Nd = Ndarray
 module Plot = Owl_plplot.Plot
-open Frictionless
 
 let plot_test ?(fname="error.png") nn data =
   let xtest = (fun (_, _, x) -> x) data in
@@ -10,7 +11,7 @@ let plot_test ?(fname="error.png") nn data =
   Plot.set_xlabel h "Error size";
   Plot.set_ylabel h "";
   Plot.set_title h "Error distribution";
-  Plot.histogram ~h ~bin:100 (Owl_dense_matrix.D.of_arrays [| Nd.to_array ytest |]);
+  Plot.histogram ~h ~bin:100 (Owl_dense_matrix.of_arrays [| Nd.to_array ytest |]);
   Plot.output h
 
 let hedge_network nn time_point =
@@ -49,8 +50,25 @@ let plot_delta ?(fname="delta.png") ?(t=0) nn =
   Plot.set_xlabel h (Printf.sprintf "S_%.2g" Int.(maturity_T *. to_float t /. to_float time_steps));
   Plot.set_ylabel h "δ-hedge";
   Plot.set_title h "Comparison of NN and analytical solution";
-  Plot.plot ~h ~spec:[Plot.LineStyle 3] (Owl_dense_matrix.D.of_arrays [| Nd.to_array sspace |]) (Owl_dense_matrix.D.of_arrays [| Nd.to_array delta |]);
+  Plot.plot ~h ~spec:[Plot.LineStyle 3] (Owl_dense_matrix.of_arrays [| Nd.to_array sspace |]) (Owl_dense_matrix.of_arrays [| Nd.to_array delta |]);
   let t_to_T = maturity_T -. Int.(to_float t /. to_float time_steps) in
   Owl_plplot.Plot.plot_fun ~h (fun s -> Blackscholes.delta s strike t_to_T sigma) 0.5 1.5;
   Plot.(legend_on h ~position:NorthWest [| "NN"; "Analytical" |]);
   Plot.output h
+
+let count_params nn =
+  let open Graph in
+  print_endline "Only counts FullyConnected neurons";
+  Owl_utils.Array.filter (fun n -> match n.neuron with Neuron.FullyConnected _ -> true | _ -> false) nn.topo
+  |> Array.map (fun n ->
+      let p_cnt l =
+        match l with
+        | Neuron.FullyConnected l ->
+          let wm = Array.fold_left (fun a b -> a * b) 1 l.in_shape in
+          let wn = l.out_shape.(0) in
+          let bn = l.out_shape.(0) in
+          (wm * wn) + bn
+        | _ -> 0
+      in
+      p_cnt n.neuron)
+  |> Array.fold_left (fun acc x -> acc + x) 0

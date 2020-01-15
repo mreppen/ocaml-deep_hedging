@@ -2,24 +2,18 @@
  * Compare: https://nbviewer.jupyter.org/url/people.math.ethz.ch/~jteichma/lecture_ml_web/deep_hedging_keras_bsanalysis.ipynb
  *)
 module BS = Blackscholes
-let s0 = 1.
-let strike = 1.
-let maturity_T = 1.
-let sigma = 0.2
-  
 
-open Owl
-open Neural.D
-module Graph = Neural.D.Graph
+open Parameters
+
+open Owl_type_aliases
+open Neural
 open Graph
-open Neural.D.Algodiff
-module Nd = Dense.Ndarray.D
+open Neural.Algodiff
+module Nd = Ndarray
 
 
-let dim = 1 (* only 1 supported for now *)
 let n_width = 8
 let n_layers = 3
-let time_steps = 20 (* time points - 1 *)
 
 let slice_node ?name ?act_typ ~out_shape sl inp =
   let lifted_sl = []::sl in
@@ -72,8 +66,6 @@ let generate_paths ?(init = (fun (_ : int) -> Nd.of_array [|s0|] [|1;1|])) count
   done;
   paths
 
-let nn = make_network ()
-
 let generate_data batch_size =
   let sspace = Nd.uniform ~a:s0 ~b:s0 [|batch_size; 1|] |> Nd.sort in
   let init i = Nd.get_slice [[i]] sspace in
@@ -85,28 +77,12 @@ let generate_data batch_size =
   in
   xtrain, y, xtest
 
-let params = Params.config 30.
+let params = Params.config 1.
   ~batch:(Batch.Mini 32)
   ~loss:Neuron.Optimise.Loss.Quadratic
   ~learning_rate:Neuron.Optimise.Learning_Rate.(default (Adam (0.001, 0.9, 0.999)))
   ~stopping:Stopping.(default (Const 0.))
   ~verbosity:true
-
-let count_params nn =
-  print_endline "Only counts FullyConnected neurons";
-  Owl_utils.Array.filter (fun n -> match n.neuron with Neuron.FullyConnected _ -> true | _ -> false) nn.topo
-  |> Array.map (fun n ->
-      let p_cnt l =
-        match l with
-        | Neuron.FullyConnected l ->
-          let wm = Array.fold_left (fun a b -> a * b) 1 l.in_shape in
-          let wn = l.out_shape.(0) in
-          let bn = l.out_shape.(0) in
-          (wm * wn) + bn
-        | _ -> 0
-      in
-      p_cnt n.neuron)
-  |> Array.fold_left (fun acc x -> acc + x) 0
 
 
 let train_and_test nn (xtrain, y, xtest) =
