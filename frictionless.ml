@@ -17,8 +17,8 @@ module Nd = Dense.Ndarray.D
 
 
 let dim = 1 (* only 1 supported for now *)
-let n_width = 32
-let n_layers = 2
+let n_width = 8
+let n_layers = 3
 let time_steps = 20 (* time points - 1 *)
 
 let slice_node ?name ?act_typ ~out_shape sl inp =
@@ -37,12 +37,12 @@ let make_network () =
   and integrand_approx ?name x = x |>
     rec_compose (n_layers - 1)
       (fully_connected
-        ~act_typ:Neuron.Activation.Relu
+        ~act_typ:Neuron.Activation.Tanh
         ~init_typ:(Neuron.Init.Gaussian (0., 1.))
         n_width)
     |> fully_connected
         ~act_typ:Neuron.Activation.None
-        ~init_typ:(Neuron.Init.Gaussian (0., 1.))
+        ~init_typ:(Neuron.Init.Gaussian (0., 0.1))
         dim
     |> reshape ?name [|dim; 1|]
   in
