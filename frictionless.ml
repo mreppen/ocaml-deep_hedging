@@ -6,7 +6,6 @@ let s0 = 1.
 let strike = 1.
 let maturity_T = 1.
 let sigma = 0.2
-let priceBS = BS.price s0 strike maturity_T sigma
   
 
 open Owl
@@ -47,10 +46,6 @@ let make_network () =
         dim
     |> reshape ?name [|dim; 1|]
   in
-  let neg_payoff = slice_node ~name:"S_T" ~out_shape:[|dim; 1|] [[]; [time_steps]] inp
-  |> lambda ~name:"-payoff" (fun p -> Maths.(
-    F (-1.) * ( F 0.5 * (abs (p - F strike) + p - F strike) - F priceBS)) )
-  in
   Array.init time_steps (fun t ->
     let t_next = t+1 in
     let integrand =
@@ -65,7 +60,6 @@ let make_network () =
     mul ~name:("dH_" ^ Int.to_string t_next) [|integrand; dS|]
     )
   |> add ~name:"H"
-  |> (fun x -> add ~name:"H-payoff" [|neg_payoff; x|])
   |> flatten
   |> get_network
 
@@ -81,9 +75,13 @@ let generate_paths ?(init = (fun (_ : int) -> Nd.of_array [|s0|] [|1;1|])) count
 let nn = make_network ()
 
 let generate_data batch_size =
-  let xtrain = generate_paths batch_size
-  and y = Nd.zeros [| batch_size; 1 |]
-  and xtest = generate_paths batch_size
+  let sspace = Nd.uniform ~a:s0 ~b:s0 [|batch_size; 1|] |> Nd.sort in
+  let init i = Nd.get_slice [[i]] sspace in
+  let xtrain = generate_paths ~init batch_size
+  and xtest = generate_paths ~init batch_size in
+  let priceBS = Nd.map (fun s0 -> BS.price s0 strike maturity_T sigma) (Nd.get_slice [[]; [0]; [0]] xtrain) in
+  let y = Nd.map2 (fun s p -> 0.5 *. (abs_float(s -. strike) +. s -. strike) -. p) (Nd.get_slice [[]; [0]; [time_steps]] xtrain) priceBS
+  |> fun y -> (Nd.reshape y [|batch_size; 1|])
   in
   xtrain, y, xtest
 
@@ -116,8 +114,8 @@ let train_and_test nn (xtrain, y, xtest) =
 
   print_endline "Mean, std for training and test data:";
 
-  let out = Graph.model nn xtrain in
+  let out = Nd.(-) (Graph.model nn xtrain) y in
   List.iter (fun x -> x out |> Nd.print) Nd.[mean; std];
 
-  let out = Graph.model nn xtest in
+  let out = Nd.(-) (Graph.model nn xtest) y in
   List.iter (fun x -> x out |> Nd.print) Nd.[mean; std]
