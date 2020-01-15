@@ -5,13 +5,13 @@ module Nd = Ndarray
 module Plot = Owl_plplot.Plot
 
 let plot_test ?(fname="error.png") nn data =
-  let xtest = (fun (_, _, x) -> x) data in
-  let ytest = Graph.model nn xtest in
+  let xtest, ytest = (fun (_, _, x, y) -> x, y) data in
+  let ytest_pred = Graph.model nn xtest in
   let h = Plot.create fname in
   Plot.set_xlabel h "Error size";
   Plot.set_ylabel h "";
   Plot.set_title h "Error distribution";
-  Plot.histogram ~h ~bin:100 (Owl_dense_matrix.of_arrays [| Nd.to_array ytest |]);
+  Plot.histogram ~h ~bin:100 (Owl_dense_matrix.of_arrays [| Nd.(to_array (ytest - ytest_pred)) |]);
   Plot.output h
 
 let hedge_network nn time_point =

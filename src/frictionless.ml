@@ -6,10 +6,10 @@ module BS = Blackscholes
 open Parameters
 
 open Owl_type_aliases
+module Nd = Ndarray
 open Neural
 open Graph
 open Neural.Algodiff
-module Nd = Ndarray
 
 
 let n_width = 8
@@ -71,11 +71,12 @@ let generate_data batch_size =
   let init i = Nd.get_slice [[i]] sspace in
   let xtrain = generate_paths ~init batch_size
   and xtest = generate_paths ~init batch_size in
-  let priceBS = Nd.map (fun s0 -> BS.price s0 strike maturity_T sigma) (Nd.get_slice [[]; [0]; [0]] xtrain) in
-  let y = Nd.map2 (fun s p -> 0.5 *. (abs_float(s -. strike) +. s -. strike) -. p) (Nd.get_slice [[]; [0]; [time_steps]] xtrain) priceBS
-  |> fun y -> (Nd.reshape y [|batch_size; 1|])
+  let make_y x =
+    let priceBS = Nd.map (fun s0 -> BS.price s0 strike maturity_T sigma) (Nd.get_slice [[]; [0]; [0]] x) in
+    Nd.map2 (fun s p -> 0.5 *. (abs_float(s -. strike) +. s -. strike) -. p) (Nd.get_slice [[]; [0]; [time_steps]] x) priceBS
+    |> fun y -> (Nd.reshape y [|batch_size; 1|])
   in
-  xtrain, y, xtest
+  xtrain, (make_y xtrain), xtest, (make_y xtest)
 
 let params = Params.config 1.
   ~batch:(Batch.Mini 32)
@@ -85,13 +86,13 @@ let params = Params.config 1.
   ~verbosity:true
 
 
-let train_and_test nn (xtrain, y, xtest) =
-  Graph.train ~params ~init_model:false nn xtrain y |> ignore;
+let train_and_test nn (xtrain, ytrain, xtest, ytest) =
+  Graph.train ~params ~init_model:false nn xtrain ytrain |> ignore;
 
   print_endline "Mean, std for training and test data:";
 
-  let out = Nd.(-) (Graph.model nn xtrain) y in
+  let out = Nd.(-) (Graph.model nn xtrain) ytrain in
   List.iter (fun x -> x out |> Nd.print) Nd.[mean; std];
 
-  let out = Nd.(-) (Graph.model nn xtest) y in
+  let out = Nd.(-) (Graph.model nn xtest) ytest in
   List.iter (fun x -> x out |> Nd.print) Nd.[mean; std]
