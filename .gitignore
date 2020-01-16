@@ -2,3 +2,6 @@ _build
 _opam
 .merlin
 .ipynb_checkpoints
+*.png
+nn_weights.bin*
+*.ipynb
