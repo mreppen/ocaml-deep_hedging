@@ -72,7 +72,7 @@ let generate_paths ?(init = (fun (_ : int) -> Nd.of_array [|s0|] [|1;1|])) count
   paths
 
 let generate_data sample_size =
-  let sspace = Nd.uniform ~a:s0 ~b:s0 [|sample_size; 1|] |> Nd.sort in
+  let sspace = Nd.uniform ~a:0.5 ~b:1.5 [|sample_size; 1|] |> Nd.sort in
   let init i = Nd.get_slice [[i]] sspace in
   let xtrain = generate_paths ~init sample_size
   and xtest = generate_paths ~init sample_size in
