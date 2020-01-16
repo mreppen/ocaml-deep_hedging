@@ -66,15 +66,15 @@ let generate_paths ?(init = (fun (_ : int) -> Nd.of_array [|s0|] [|1;1|])) count
   done;
   paths
 
-let generate_data batch_size =
-  let sspace = Nd.uniform ~a:s0 ~b:s0 [|batch_size; 1|] |> Nd.sort in
+let generate_data sample_size =
+  let sspace = Nd.uniform ~a:s0 ~b:s0 [|sample_size; 1|] |> Nd.sort in
   let init i = Nd.get_slice [[i]] sspace in
-  let xtrain = generate_paths ~init batch_size
-  and xtest = generate_paths ~init batch_size in
+  let xtrain = generate_paths ~init sample_size
+  and xtest = generate_paths ~init sample_size in
   let make_y x =
     let priceBS = Nd.map (fun s0 -> BS.price s0 strike maturity_T sigma) (Nd.get_slice [[]; [0]; [0]] x) in
     Nd.map2 (fun s p -> 0.5 *. (abs_float(s -. strike) +. s -. strike) -. p) (Nd.get_slice [[]; [0]; [time_steps]] x) priceBS
-    |> fun y -> (Nd.reshape y [|batch_size; 1|])
+    |> fun y -> (Nd.reshape y [|sample_size; 1|])
   in
   xtrain, (make_y xtrain), xtest, (make_y xtest)
 
