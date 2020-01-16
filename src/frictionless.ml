@@ -26,25 +26,30 @@ let rec rec_compose n f x =
   | n when n > 1 -> rec_compose (n-1) f (f x)
   | _ -> failwith "Must compose at least once"
 
-let make_network () =
-  let inp = input [| dim; time_steps+1 |]
-  and integrand_approx ?name x = x |>
-    rec_compose (n_layers - 1)
-      (fully_connected
-        ~act_typ:Neuron.Activation.Tanh
-        ~init_typ:(Neuron.Init.Gaussian (0., 1.))
-        n_width)
+let make_hedge_networks () =
+  Array.init time_steps (fun t ->
+    input ~name:("in_time_" ^ Int.to_string t) [| dim; 1 |]
+    |> rec_compose (n_layers - 1)
+        (fully_connected
+          ~act_typ:Neuron.Activation.Tanh
+          ~init_typ:(Neuron.Init.Gaussian (0., 1.))
+          n_width)
     |> fully_connected
         ~act_typ:Neuron.Activation.None
         ~init_typ:(Neuron.Init.Gaussian (0., 0.1))
         dim
-    |> reshape ?name [|dim; 1|]
+    |> reshape ~name:("out_" ^ Int.to_string t) [|dim; 1|]
+    |> get_network)
+
+let make_network hedge_networks =
+  let inp = input [| dim; time_steps+1 |]
   in
   Array.init time_steps (fun t ->
     let t_next = t+1 in
     let integrand =
+      let hedge_nn = Array.get hedge_networks t in
       slice_node ~name:("S_" ^ Int.to_string t) ~out_shape:[|dim; 1|] [[]; [t]] inp
-      |> integrand_approx ~name:("f_" ^ Int.to_string t)
+      |> Extgraph.chain_network_ ~name_prefix:("f_" ^ Int.to_string t ^ "_") hedge_nn
     in
     let dS = lambda_array ~name:("dS_" ^ Int.to_string t_next) [|dim; 1|] (fun x ->
       let s = (Array.get x 0) in
@@ -78,7 +83,7 @@ let generate_data sample_size =
   in
   xtrain, (make_y xtrain), xtest, (make_y xtest)
 
-let params = Params.config 1.
+let params = Params.config 100.
   ~batch:(Batch.Mini 32)
   ~loss:Neuron.Optimise.Loss.Quadratic
   ~learning_rate:Neuron.Optimise.Learning_Rate.(default (Adam (0.001, 0.9, 0.999)))

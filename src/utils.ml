@@ -42,16 +42,15 @@ let hedge_network nn time_point =
   sub_net ~stopname:("S_" ^ Int.to_string time_point) nn f_node
   |> Graph.get_network
 
-let plot_delta ?(fname="delta.png") ?(t=0) nn =
-  let nn_hedge = hedge_network nn t in
+let plot_delta ?(fname="delta.png") ?(t=0.) hedge_nn =
   let sspace = Nd.linspace 0.5 1.5 1000 in
-  let delta = Graph.model nn_hedge (Nd.reshape sspace [|1000;1;1|]) in
+  let delta = Graph.model hedge_nn (Nd.reshape sspace [|1000;1;1|]) in
   let h = Plot.create fname in
-  Plot.set_xlabel h (Printf.sprintf "S_%.2g" Int.(maturity_T *. to_float t /. to_float time_steps));
+  Plot.set_xlabel h (Printf.sprintf "S_%.2g" t);
   Plot.set_ylabel h "δ-hedge";
   Plot.set_title h "Comparison of NN and analytical solution";
   Plot.plot ~h ~spec:[Plot.LineStyle 3] (Owl_dense_matrix.of_arrays [| Nd.to_array sspace |]) (Owl_dense_matrix.of_arrays [| Nd.to_array delta |]);
-  let t_to_T = maturity_T -. Int.(to_float t /. to_float time_steps) in
+  let t_to_T = maturity_T -. t in
   Owl_plplot.Plot.plot_fun ~h (fun s -> Blackscholes.delta s strike t_to_T sigma) 0.5 1.5;
   Plot.(legend_on h ~position:NorthWest [| "NN"; "Analytical" |]);
   Plot.output h
