@@ -1,4 +1,12 @@
-open Owl_neural.D.Graph
+open Owl_type_aliases
+open Neural
+open Graph
+
+let slice_node ?name ?act_typ ~out_shape sl inp =
+  let open Neural in
+  let lifted_sl = []::sl in
+  lambda_array ?name ?act_typ out_shape 
+    (fun x -> Algodiff.Maths.(get_slice lifted_sl (Array.get x 0))) [|inp|]
 
 let chain_network_ ~name_prefix nn in_node =
   let in_nn = get_network in_node in

@@ -1,4 +1,4 @@
 (executable
   (name      main)
-  (modules main owl_type_aliases parameters utils blackscholes frictionless extgraph)
+  (modules main owl_type_aliases utils blackscholes positions hedging extgraph)
   (libraries owl owl-plplot))

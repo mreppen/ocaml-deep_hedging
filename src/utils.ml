@@ -1,11 +1,11 @@
-open Parameters
 open Owl_type_aliases
 module Graph = Neural.Graph
 module Nd = Ndarray
 module Plot = Owl_plplot.Plot
 
-let plot_test ?(fname="error.png") nn data =
-  let xtest, ytest = (fun (_, _, x, y) -> x, y) data in
+let dim = 1
+
+let plot_test ?(fname="error.png") nn xtest ytest =
   let ytest_pred = Graph.model nn xtest in
   let h = Plot.create fname in
   Plot.set_xlabel h "Error size";
@@ -42,7 +42,7 @@ let hedge_network nn time_point =
   sub_net ~stopname:("S_" ^ Int.to_string time_point) nn f_node
   |> Graph.get_network
 
-let plot_delta ?(fname="delta.png") ?(t=0.) hedge_nn =
+let plot_delta ?(fname="delta.png") ~t hedge_nn true_delta =
   let sspace = Nd.linspace 0.5 1.5 1000 in
   let delta = Graph.model hedge_nn (Nd.reshape sspace [|1000;1;1|]) in
   let h = Plot.create fname in
@@ -50,8 +50,7 @@ let plot_delta ?(fname="delta.png") ?(t=0.) hedge_nn =
   Plot.set_ylabel h "δ-hedge";
   Plot.set_title h "Comparison of NN and analytical solution";
   Plot.plot ~h ~spec:[Plot.LineStyle 3] (Owl_dense_matrix.of_arrays [| Nd.to_array sspace |]) (Owl_dense_matrix.of_arrays [| Nd.to_array delta |]);
-  let t_to_T = maturity_T -. t in
-  Owl_plplot.Plot.plot_fun ~h (fun s -> Blackscholes.delta s strike t_to_T sigma) 0.5 1.5;
+  Owl_plplot.Plot.plot_fun ~h true_delta 0.5 1.5;
   Plot.(legend_on h ~position:NorthWest [| "NN"; "Analytical" |]);
   Plot.output h
 
